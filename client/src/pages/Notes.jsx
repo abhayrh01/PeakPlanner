@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Container, TextField, Button, List, ListItem, ListItemText, IconButton, Typography, Paper, Select, MenuItem, FormControl, InputLabel, Chip, Box, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
-import { Delete, Edit, FormatBold, FormatItalic, FormatUnderlined, FormatListBulleted, FormatListNumbered, FormatQuote, Code, Link, Title, FormatAlignLeft, FormatAlignCenter, FormatAlignRight, FormatColorText, FormatSize } from "@mui/icons-material";
+import { Container, TextField, Button, List, ListItem, ListItemText, IconButton, Typography, Paper, Select, MenuItem, FormControl, InputLabel, Chip, Box } from "@mui/material";
+import { Delete, Edit } from "@mui/icons-material";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 const CATEGORIES = [
   { id: 'work', label: 'Work', color: '#FF6B6B' },
@@ -13,52 +14,33 @@ const CATEGORIES = [
 
 function Notes() {
   const [notes, setNotes] = useState([]);
-  const [newTitle, setNewTitle] = useState(""); // Title for new note
-  const [newNote, setNewNote] = useState(""); // Body for new note
+  const [loading, setLoading] = useState(true);
+  const [newTitle, setNewTitle] = useState("");
+  const [newNote, setNewNote] = useState("");
   const [selectedCategory, setSelectedCategory] = useState('other');
   const [filterCategory, setFilterCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState("");
-  const [isTyping, setIsTyping] = useState(false); // Track if user is typing
-  const [isEditing, setIsEditing] = useState(false); // Track if editing an existing note
-  const [editIndex, setEditIndex] = useState(null); // Track which note is being edited
-  const [formatting, setFormatting] = useState({
-    bold: false,
-    italic: false,
-    underline: false,
-    list: 'none', // 'none', 'bullet', 'number'
-    align: 'left', // 'left', 'center', 'right'
-    size: 'normal', // 'small', 'normal', 'large'
-    color: '#000000'
-  });
+  const [isTyping, setIsTyping] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
 
-  // Load saved notes from localStorage when the page loads
   useEffect(() => {
-    try {
-      const savedNotes = localStorage.getItem("peakplanner_notes");
-      if (savedNotes) {
+    const savedNotes = localStorage.getItem("peakplanner_notes");
+    if (savedNotes) {
+      try {
         const parsedNotes = JSON.parse(savedNotes);
-        // Ensure each note has an ID
-        const notesWithIds = parsedNotes.map(note => ({
-          ...note,
-          id: note.id || Date.now() + Math.random().toString(36).substr(2, 9)
-        }));
-        setNotes(notesWithIds);
+        setNotes(parsedNotes);
+      } catch (error) {
+        console.error("Error parsing notes:", error);
       }
-    } catch (error) {
-      console.error("Error loading notes from localStorage", error);
     }
+    setLoading(false);
   }, []);
 
   // Save notes to localStorage whenever they change
   useEffect(() => {
     if (notes.length > 0) {
-      try {
-        localStorage.setItem("peakplanner_notes", JSON.stringify(notes));
-      } catch (error) {
-        console.error("Error saving notes to localStorage", error);
-      }
-    } else {
-      localStorage.removeItem("peakplanner_notes");
+      localStorage.setItem("peakplanner_notes", JSON.stringify(notes));
     }
   }, [notes]);
 
@@ -80,25 +62,6 @@ function Notes() {
   const deleteNote = (index) => {
     const updatedNotes = notes.filter((_, i) => i !== index);
     setNotes(updatedNotes);
-  };
-
-  const handleFormatChange = (format, value) => {
-    setFormatting(prev => ({
-      ...prev,
-      [format]: value
-    }));
-  };
-
-  const getTextStyle = () => {
-    return {
-      fontWeight: formatting.bold ? 'bold' : 'normal',
-      fontStyle: formatting.italic ? 'italic' : 'normal',
-      textDecoration: formatting.underline ? 'underline' : 'none',
-      textAlign: formatting.align,
-      fontSize: formatting.size === 'small' ? '0.875rem' : 
-               formatting.size === 'large' ? '1.25rem' : '1rem',
-      color: formatting.color
-    };
   };
 
   const handleTyping = (e) => {
@@ -148,11 +111,18 @@ function Notes() {
   });
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 3 }}>
-      <Paper elevation={3} sx={{ p: 3, bgcolor: "#121212", color: "#EAEAEA" }}>
-        <Typography variant="h5" gutterBottom>Your Notes</Typography>
+    <Container maxWidth="lg">
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          Notes
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Capture your thoughts and ideas
+        </Typography>
+      </Box>
 
-        {/* Search Bar */}
+      {/* Note Input Form */}
+      <Paper sx={{ p: 3, mb: 4 }}>
         <TextField
           fullWidth
           variant="outlined"
@@ -285,8 +255,7 @@ function Notes() {
             backgroundColor: "#fff", 
             borderRadius: "5px", 
             textarea: { 
-              color: "#121212",
-              ...getTextStyle()
+              color: "#121212"
             },
             '& .MuiOutlinedInput-root': {
               '& fieldset': {
@@ -299,142 +268,6 @@ function Notes() {
           }}
         />
 
-        {/* Formatting Toolbar */}
-        <Paper 
-          elevation={1} 
-          sx={{ 
-            p: 1, 
-            mb: 2, 
-            display: 'flex', 
-            flexWrap: 'wrap', 
-            gap: 1,
-            bgcolor: '#2D2D2D',
-            borderRadius: '4px'
-          }}
-        >
-          <ToggleButtonGroup size="small" exclusive>
-            <Tooltip title="Bold">
-              <ToggleButton 
-                value="bold" 
-                selected={formatting.bold}
-                onClick={() => handleFormatChange('bold', !formatting.bold)}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatBold />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Italic">
-              <ToggleButton 
-                value="italic" 
-                selected={formatting.italic}
-                onClick={() => handleFormatChange('italic', !formatting.italic)}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatItalic />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Underline">
-              <ToggleButton 
-                value="underline" 
-                selected={formatting.underline}
-                onClick={() => handleFormatChange('underline', !formatting.underline)}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatUnderlined />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" exclusive>
-            <Tooltip title="Bullet List">
-              <ToggleButton 
-                value="bullet" 
-                selected={formatting.list === 'bullet'}
-                onClick={() => handleFormatChange('list', formatting.list === 'bullet' ? 'none' : 'bullet')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatListBulleted />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Numbered List">
-              <ToggleButton 
-                value="number" 
-                selected={formatting.list === 'number'}
-                onClick={() => handleFormatChange('list', formatting.list === 'number' ? 'none' : 'number')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatListNumbered />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" exclusive>
-            <Tooltip title="Align Left">
-              <ToggleButton 
-                value="left" 
-                selected={formatting.align === 'left'}
-                onClick={() => handleFormatChange('align', 'left')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatAlignLeft />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Align Center">
-              <ToggleButton 
-                value="center" 
-                selected={formatting.align === 'center'}
-                onClick={() => handleFormatChange('align', 'center')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatAlignCenter />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Align Right">
-              <ToggleButton 
-                value="right" 
-                selected={formatting.align === 'right'}
-                onClick={() => handleFormatChange('align', 'right')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatAlignRight />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" exclusive>
-            <Tooltip title="Small Text">
-              <ToggleButton 
-                value="small" 
-                selected={formatting.size === 'small'}
-                onClick={() => handleFormatChange('size', 'small')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatSize />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Normal Text">
-              <ToggleButton 
-                value="normal" 
-                selected={formatting.size === 'normal'}
-                onClick={() => handleFormatChange('size', 'normal')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <Title />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="Large Text">
-              <ToggleButton 
-                value="large" 
-                selected={formatting.size === 'large'}
-                onClick={() => handleFormatChange('size', 'large')}
-                sx={{ color: '#EAEAEA' }}
-              >
-                <FormatSize />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-        </Paper>
-
         {/* Add/Update Button */}
         <Button 
           variant="contained" 
@@ -443,8 +276,12 @@ function Notes() {
         >
           {isEditing ? "Update Note" : "Add Note"}
         </Button>
+      </Paper>
 
-        {/* Display Notes */}
+      {/* Notes List */}
+      {loading ? (
+        <LoadingSkeleton type="note" count={5} />
+      ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="notes">
             {(provided) => (
@@ -515,7 +352,7 @@ function Notes() {
             )}
           </Droppable>
         </DragDropContext>
-      </Paper>
+      )}
     </Container>
   );
 }

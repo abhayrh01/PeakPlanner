@@ -7,6 +7,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 const CATEGORIES = [
   { id: 'work', label: 'Work', color: '#FF6B6B' },
@@ -24,6 +25,7 @@ const PRIORITIES = [
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
   const [newTask, setNewTask] = useState("");
   const [selectedCategory, setSelectedCategory] = useState('other');
@@ -37,42 +39,23 @@ export default function Tasks() {
   const [editIndex, setEditIndex] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // Changed default to 'grid'
 
-  // Load saved tasks from localStorage when the page loads
   useEffect(() => {
-    try {
-      const savedTasks = localStorage.getItem("peakplanner_tasks");
-      if (savedTasks) {
+    const savedTasks = localStorage.getItem("peakplanner_tasks");
+    if (savedTasks) {
+      try {
         const parsedTasks = JSON.parse(savedTasks);
-        // Ensure each task has all required fields
-        const tasksWithDefaults = parsedTasks.map(task => ({
-          id: task.id || Date.now() + Math.random().toString(36).substr(2, 9),
-          title: task.title || "Untitled",
-          body: task.body || "",
-          completed: task.completed || false,
-          category: task.category || 'other',
-          priority: task.priority || 'medium',
-          dueDate: task.dueDate || null
-        }));
-        setTasks(tasksWithDefaults);
+        setTasks(parsedTasks);
+      } catch (error) {
+        console.error("Error parsing tasks:", error);
       }
-    } catch (error) {
-      console.error("Error loading tasks from localStorage", error);
-      // If there's an error, initialize with empty array
-      setTasks([]);
     }
+    setLoading(false);
   }, []);
 
   // Save tasks to localStorage whenever they change
   useEffect(() => {
     if (tasks.length > 0) {
-      try {
-        localStorage.setItem("peakplanner_tasks", JSON.stringify(tasks));
-      } catch (error) {
-        console.error("Error saving tasks to localStorage", error);
-      }
-    } else {
-      // If no tasks, remove the item from localStorage
-      localStorage.removeItem("peakplanner_tasks");
+      localStorage.setItem("peakplanner_tasks", JSON.stringify(tasks));
     }
   }, [tasks]);
 
@@ -620,31 +603,35 @@ export default function Tasks() {
           </Box>
 
           {/* Tasks List/Grid */}
-          <DragDropContext onDragEnd={handleDragEnd}>
-            {viewMode === 'list' ? (
-              <List>
-                <Droppable droppableId="tasks">
-                  {(provided) => (
-                    <div {...provided.droppableProps} ref={provided.innerRef}>
-                      {sortedAndFilteredTasks.map((task, index) => renderTaskItem(task, index))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </List>
-            ) : (
-              <Grid container spacing={2}>
-                <Droppable droppableId="tasks">
-                  {(provided) => (
-                    <div {...provided.droppableProps} ref={provided.innerRef} style={{ width: '100%' }}>
-                      {sortedAndFilteredTasks.map((task, index) => renderTaskItem(task, index))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </Grid>
-            )}
-          </DragDropContext>
+          {loading ? (
+            <LoadingSkeleton type="task" count={5} />
+          ) : (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              {viewMode === 'list' ? (
+                <List>
+                  <Droppable droppableId="tasks">
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef}>
+                        {sortedAndFilteredTasks.map((task, index) => renderTaskItem(task, index))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </List>
+              ) : (
+                <Grid container spacing={2}>
+                  <Droppable droppableId="tasks">
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} style={{ width: '100%' }}>
+                        {sortedAndFilteredTasks.map((task, index) => renderTaskItem(task, index))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </Grid>
+              )}
+            </DragDropContext>
+          )}
         </Paper>
       </Container>
     </LocalizationProvider>
