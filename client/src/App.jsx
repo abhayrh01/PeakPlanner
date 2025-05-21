@@ -1,15 +1,28 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, Container, AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { useState } from 'react';
 import theme from './theme';
 import Home from './pages/Home';
 import Tasks from './pages/Tasks';
 import Notes from './pages/Notes';
+import Login from './components/Login';
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    // Check if user has logged in before using a specific key for PeakPlanner
+    return localStorage.getItem('peakplanner_logged_in') === 'true';
+  });
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    localStorage.setItem('peakplanner_logged_in', 'true');
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
+        <Login open={!isLoggedIn} onLogin={handleLogin} />
         <Box sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
